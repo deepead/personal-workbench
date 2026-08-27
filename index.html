@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7">
+<meta name="description" content="一站式生活管理看板：计划、饮食、运动、记账、读书、心情、英语与主题定制">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="工作台">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>个人工作台 · Personal Workbench</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --brand:#30b94d; --teal:#5ac8fa; --indigo:#1f8a70;
+  --blue:#0071e3; --green:#34c759; --orange:#ff9500; --pink:#ff375f;
+  --bg:#f2f2f7; --card:#ffffff; --sidebar:#ffffff; --text:#1d1d1f; --text2:#86868b;
+  --border:rgba(0,0,0,.08); --shadow:0 8px 24px rgba(0,0,0,.07);
+  --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+html,body{touch-action:pan-x pan-y}      /* 只允许单指滚动，禁用双击+捏合缩放 */
+body{overscroll-behavior:none}         /* 禁用下拉回弹误触 */
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--text); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.app{display:flex;min-height:100vh}
+html{min-height:100vh;min-height:-webkit-fill-available}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:220px;background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:50;
+  display:flex;flex-direction:column;padding-top:max(18px,env(safe-area-inset-top));padding-left:max(12px,env(safe-area-inset-left));padding-right:12px;padding-bottom:max(18px,env(safe-area-inset-bottom));border-right:1px solid var(--border);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;
+}
+.logo{display:flex;align-items:center;gap:10px;padding:6px 10px 18px}
+.logo-ico{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--indigo));
+  display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;flex-shrink:0}
+.logo b{font-size:16px;letter-spacing:.3px}
+.logo small{display:block;font-size:11px;color:var(--text2);font-weight:400}
+.nav{flex:1;display:flex;flex-direction:column;gap:2px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;
+  color:var(--text2);font-weight:500;border:none;background:none;font-size:14.5px;text-align:left;width:100%;
+  transition:background .15s,color .15s;font-family:inherit;
+}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:color-mix(in srgb,var(--brand) 12%,transparent);color:var(--brand);font-weight:600}
+.nav-item .ico{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.side-foot{padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.btn-week{
+  display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:13px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--brand),var(--indigo));color:#fff;font-weight:600;font-size:14px;
+  font-family:inherit;box-shadow:0 4px 14px color-mix(in srgb,var(--brand) 35%,transparent);
+}
+.btn-week:hover{filter:brightness(1.06)}
+.side-mini{display:flex;gap:6px}
+.btn-mini{
+  flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text2);
+  font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.btn-mini:hover{color:var(--text);border-color:var(--text2)}
+
+/* ---------- Main ---------- */
+.main{flex:1;margin-left:220px;padding-top:max(26px,env(safe-area-inset-top));padding-left:max(30px,env(safe-area-inset-left));padding-right:max(30px,env(safe-area-inset-right));padding-bottom:max(60px,env(safe-area-inset-bottom));max-width:1060px;width:100%}
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.hamburger{display:none;border:none;background:var(--card);width:40px;height:40px;border-radius:12px;
+  font-size:18px;cursor:pointer;box-shadow:var(--shadow);color:var(--text)}
+.topbar h1{font-size:26px;font-weight:700;letter-spacing:-.3px}
+.topbar .date{color:var(--text2);font-size:13px;margin-left:auto;text-align:right}
+
+.view{display:none;animation:fade .25s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h3 .sub{font-weight:400;font-size:12px;color:var(--text2)}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+
+.stat{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+.stat .k{font-size:12px;color:var(--text2);margin-bottom:6px}
+.stat .v{font-size:24px;font-weight:700;letter-spacing:-.5px}
+.stat .v small{font-size:13px;font-weight:500;color:var(--text2)}
+
+/* ---------- Forms ---------- */
+input,select,textarea{
+  font-family:inherit;font-size:14px;color:var(--text);background:var(--bg);
+  border:1px solid transparent;border-radius:11px;padding:10px 12px;outline:none;transition:border .15s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--teal)}
+textarea{resize:vertical;min-height:70px;width:100%}
+.btn{
+  border:none;border-radius:11px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  background:var(--blue);color:#fff;transition:filter .15s,transform .1s;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:scale(.97)}
+.btn.gray{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.btn.purple{background:var(--brand)}
+.btn.green{background:var(--green)}
+.btn.pink{background:var(--pink)}
+.btn.sm{padding:6px 12px;font-size:12.5px;border-radius:9px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ---------- Todos ---------- */
+.todo-item{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.todo-item:last-child{border-bottom:none}
+.todo-check{width:22px;height:22px;border-radius:7px;border:2px solid var(--text2);cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;transition:all .15s;background:none}
+.todo-item.done .todo-check{background:var(--green);border-color:var(--green)}
+.todo-item.done .todo-text{color:var(--text2);text-decoration:line-through}
+.todo-text{flex:1}
+.pri{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;flex-shrink:0}
+.pri.h{background:color-mix(in srgb,var(--pink) 15%,transparent);color:var(--pink)}
+.pri.m{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
+.pri.l{background:color-mix(in srgb,var(--teal) 18%,transparent);color:color-mix(in srgb,var(--teal) 70%,#0088cc)}
+.del{border:none;background:none;color:var(--text2);cursor:pointer;font-size:15px;padding:4px 6px;border-radius:8px;opacity:.55}
+.del:hover{opacity:1;color:var(--pink)}
+.big-rate{text-align:center;padding:6px 0}
+.big-rate .num{font-size:40px;font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--brand),var(--indigo));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.big-rate .lb{font-size:12px;color:var(--text2)}
+
+/* ---------- Diet ---------- */
+.meal-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.meal-tab{padding:8px 16px;border-radius:11px;border:1px solid var(--border);background:var(--bg);cursor:pointer;
+  font-size:13.5px;font-family:inherit;color:var(--text2);font-weight:500;transition:all .15s}
+.meal-tab.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.quick-foods{display:flex;flex-wrap:wrap;gap:8px}
+.qfood{padding:6px 12px;border-radius:20px;border:1px dashed var(--border);background:var(--bg);cursor:pointer;
+  font-size:12.5px;font-family:inherit;color:var(--text);transition:all .15s}
+.qfood:hover{border-color:var(--green);color:var(--green);background:color-mix(in srgb,var(--green) 8%,transparent)}
+.diet-item{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border);font-size:14px}
+.diet-item:last-child{border-bottom:none}
+.diet-item .cal{color:var(--orange);font-weight:600;font-size:13px}
+.ring-wrap{display:flex;align-items:center;gap:18px;justify-content:center;padding:8px 0}
+.ring{width:110px;height:110px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:11;stroke-linecap:round}
+.ring .track{stroke:var(--bg)}
+.ring .val{stroke:var(--green);transition:stroke-dashoffset .6s ease}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(0)}
+.ring-box{position:relative;width:110px;height:110px}
+.ring-center b{font-size:22px}
+.ring-center span{font-size:11px;color:var(--text2)}
+
+/* ---------- Exercise ---------- */
+.sports{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.sport{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border-radius:14px;cursor:pointer;
+  border:2px solid var(--border);background:var(--bg);font-family:inherit;color:var(--text);font-size:12.5px;transition:all .15s}
+.sport .se{font-size:24px}
+.sport.active{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,transparent);color:var(--brand);font-weight:600}
+.heatmap{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.heat-cell{border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:58px;padding:8px 2px;box-sizing:border-box;
+  background:var(--bg);color:var(--text2)}
+.heat-cell .hd{font-size:13px;font-weight:500;line-height:1}
+.heat-cell .hv{font-size:10px;opacity:.85;line-height:1;margin-top:auto;padding-top:4px}
+.heat-cell.has-val{justify-content:flex-start}
+.heat-cell.has-val .hd{margin-bottom:auto}
+.heat-cell.h1{background:color-mix(in srgb,var(--brand) 22%,var(--bg));color:var(--text)}
+.heat-cell.h2{background:color-mix(in srgb,var(--brand) 45%,var(--bg));color:#fff}
+.heat-cell.h3{background:color-mix(in srgb,var(--brand) 75%,var(--bg));color:#fff}
+.heat-cell.today{outline:2px solid var(--teal);outline-offset:2px}
+.ex-item{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid var(--border);font-size:14px}
+.ex-item:last-child{border-bottom:none}
+
+/* ---------- Finance ---------- */
+.seg{display:inline-flex;background:var(--bg);border-radius:11px;padding:3px;gap:3px}
+.seg button{border:none;background:none;padding:7px 18px;border-radius:9px;font-size:13.5px;font-family:inherit;
+  cursor:pointer;color:var(--text2);font-weight:600;transition:all .15s}
+.seg button.active{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.seg button.active.out{color:var(--pink)}
+.seg button.active.in{color:var(--green)}
+.fin-item{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid var(--border);font-size:14px}
+.fin-item:last-child{border-bottom:none}
+.tag{font-size:11px;padding:2px 9px;border-radius:6px;background:var(--bg);color:var(--text2);font-weight:500}
+.amt{font-weight:700}
+.amt.in{color:var(--green)}
+.amt.out{color:var(--pink)}
+
+/* ---------- Books ---------- */
+.book{border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.book .bh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.book .bh b{font-size:16px}
+.book .bh small{display:block;color:var(--text2);font-weight:400;margin-top:2px}
+.pbar{height:8px;background:var(--bg);border-radius:5px;overflow:hidden;margin:8px 0 6px}
+.pbar>div{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--teal),var(--indigo));transition:width .4s ease}
+.pbar.lb{font-size:12px;color:var(--text2);display:flex;justify-content:space-between}
+.note{background:var(--bg);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px;white-space:pre-wrap}
+.note small{color:var(--text2);display:block;margin-bottom:3px;font-size:11px}
+
+/* ---------- Mood ---------- */
+.moods{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:8px 0 4px}
+.mood{width:64px;height:64px;border-radius:18px;border:2px solid var(--border);background:var(--bg);cursor:pointer;
+  font-size:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
+.mood small{font-size:10px;color:var(--text2);margin-top:1px}
+.mood.active{border-color:var(--brand);transform:scale(1.08);background:color-mix(in srgb,var(--brand) 10%,transparent)}
+
+/* ---------- English ---------- */
+.flashcard{perspective:1100px;height:190px;cursor:pointer;margin-bottom:14px}
+.flashcard-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.flashcard.flipped .flashcard-inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:var(--radius);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:var(--shadow);padding:20px;text-align:center}
+.face.front{background:linear-gradient(135deg,color-mix(in srgb,var(--indigo) 10%,var(--card)),var(--card))}
+.face.back{background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 12%,var(--card)),var(--card));transform:rotateY(180deg)}
+.face .fw{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.face .fm{font-size:15px;line-height:1.6;max-width:90%}
+.face .hint{font-size:11px;color:var(--text2)}
+.gbar{height:8px;background:var(--bg);border-radius:5px;overflow:hidden}
+.gbar>div{height:100%;background:var(--green);transition:width .4s;border-radius:5px}
+
+/* ---------- Dev ---------- */
+.color-row{display:flex;align-items:center;justify-content:space-between;padding:9px 4px;border-bottom:1px solid var(--border);gap:12px}
+.color-row:last-child{border-bottom:none}
+.color-row label{font-size:13.5px;flex:1}
+.color-row .cv{font-size:11px;color:var(--text2);font-family:ui-monospace,monospace}
+input[type=color]{width:44px;height:32px;padding:2px;border-radius:9px;cursor:pointer;border:1px solid var(--border);background:var(--card)}
+.dev-group{margin-bottom:18px}
+.dev-group>h4{font-size:13px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:38px;height:38px;border-radius:12px;cursor:pointer;border:2px solid var(--border);transition:transform .15s}
+.swatch:hover{transform:scale(1.1)}
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:100;display:none;
+  align-items:center;justify-content:center;padding:20px}
+.modal.open{display:flex}
+.modal-box{background:var(--card);border-radius:20px;max-width:680px;width:100%;max-height:86vh;overflow-y:auto;
+  padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:none}}
+.modal-box h2{font-size:20px;margin-bottom:4px}
+.modal-box .range{color:var(--text2);font-size:13px;margin-bottom:18px}
+.wk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.wk-cell{background:var(--bg);border-radius:13px;padding:12px 14px}
+.wk-cell .k{font-size:11.5px;color:var(--text2);margin-bottom:3px}
+.wk-cell .v{font-size:17px;font-weight:700}
+.insight{display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--indigo) 8%,transparent);
+  margin-bottom:8px;font-size:13.5px;line-height:1.55}
+.insight .ic{flex-shrink:0}
+.modal-close{float:right;border:none;background:var(--bg);width:32px;height:32px;border-radius:10px;font-size:15px;cursor:pointer;color:var(--text2)}
+.modal-close:hover{color:var(--text)}
+
+/* ---------- Toast ---------- */
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);
+  padding:11px 22px;border-radius:13px;font-size:13.5px;font-weight:500;z-index:200;transition:transform .3s ease;pointer-events:none;
+  box-shadow:0 8px 30px rgba(0,0,0,.25);max-width:86vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+.empty{color:var(--text2);font-size:13px;text-align:center;padding:18px 0}
+.chart-box{position:relative;height:240px}
+
+/* ---------- Mobile ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:49;display:none}
+.overlay.show{display:block}
+@media (max-width:768px){
+  .sidebar{transform:translateX(-100%);box-shadow:none}
+  .sidebar.open{transform:translateX(0);box-shadow:10px 0 40px rgba(0,0,0,.15)}
+  .main{margin-left:0;padding:18px 16px 50px}
+  .hamburger{display:block}
+  .g2,.g3,.g4,.wk-grid{grid-template-columns:1fr 1fr}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .sports{grid-template-columns:repeat(4,1fr)}
+  .topbar .date{display:none}
+  .heatmap{gap:6px}
+  .heat-cell{border-radius:8px;min-height:52px;padding:6px 2px}
+  .heat-cell .hd{font-size:12px}
+  .heat-cell .hv{font-size:9px;padding-top:3px}
+}
+@media (max-width:420px){.g2,.g3,.g4,.wk-grid{grid-template-columns:1fr}}
+
+/* ---------- 隐藏 EdgeOne Pages 平台注入的演示水印（底部英文提示条） ----------
+   unified.js 会动态生成 #edgeone-watermark（并带防删除观察器），
+   用 display:none 隐藏而非删除，观察器检查 body.contains 仍为真，不会重新加回 */
+#edgeone-watermark,#edgeone-watermark *,#fab-popup{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-ico"><svg viewBox="0 0 38 38" width="22" height="22" style="display:block"><polygon points="19,5 22,17 33,19 22,21 19,33 16,21 5,19 16,17" fill="#fff"/><polygon points="28,5 29.5,9 34,10 29.5,11 28,15 26.5,11 22,10 26.5,9" fill="#fff" opacity=".95"/></svg></div>
+      <div><b>个人工作台</b><small>Personal Workbench</small></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <button class="btn-week" onclick="openWeekModal()">📊 周度数据分析</button>
+      <div class="side-mini">
+        <button class="btn-mini" onclick="exportData()">⬆ 导出备份</button>
+        <button class="btn-mini" onclick="document.getElementById('importFile').click()">⬇ 导入恢复</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+      </div>
+    </div>
+  </aside>
+  <div class="overlay" id="overlay" onclick="toggleDrawer(false)"></div>
+
+  <!-- ================= Main ================= -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleDrawer(true)">☰</button>
+      <h1 id="viewTitle">每日计划</h1>
+      <div class="date" id="todayLabel"></div>
+    </div>
+
+    <!-- ===== 1. 每日计划 ===== -->
+    <section class="view" id="view-todos">
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="stat"><div class="big-rate"><div class="num" id="todoRate">0%</div><div class="lb">今日完成率</div></div></div>
+        <div class="stat"><div class="k">待办总数</div><div class="v" id="todoTotal">0</div></div>
+        <div class="stat"><div class="k">已完成</div><div class="v" id="todoDone" style="color:var(--green)">0</div></div>
+      </div>
+      <div class="card">
+        <h3>➕ 添加待办</h3>
+        <div class="row">
+          <input id="todoInput" placeholder="要做点什么…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')addTodo()">
+          <select id="todoPri">
+            <option value="h">🔴 高优先级</option>
+            <option value="m" selected>🟠 中优先级</option>
+            <option value="l">🔵 低优先级</option>
+          </select>
+          <button class="btn purple" onclick="addTodo()">添加</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📋 今日待办 <span class="sub">按优先级排序</span></h3>
+        <div id="todoList"></div>
+      </div>
+    </section>
+
+    <!-- ===== 2. 饮食记录 ===== -->
+    <section class="view" id="view-diet">
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="stat"><div class="k">已摄入</div><div class="v" id="dietIn" style="color:var(--orange)">0 <small>kcal</small></div></div>
+        <div class="stat"><div class="k">每日目标</div><div class="row" style="margin-top:2px">
+          <input id="dietTarget" type="number" style="width:90px" value="2000">
+          <button class="btn sm green" onclick="setDietTarget()">保存</button></div></div>
+        <div class="stat"><div class="k" id="dietRemainLabel">剩余额度</div><div class="v" id="dietRemain">0 <small>kcal</small></div></div>
+      </div>
+      <div class="card">
+        <div class="ring-wrap">
+          <div class="ring-box">
+            <svg class="ring" viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="val" id="dietRing" cx="60" cy="60" r="52"/></svg>
+            <div class="ring-center"><b id="ringPct">0%</b><span>今日进度</span></div>
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:2" id="dietMealBreak"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🍽 餐次记录</h3>
+        <div class="meal-tabs" id="mealTabs"></div>
+        <h4 style="font-size:12.5px;color:var(--text2);margin-bottom:8px">⚡ 高频食物快捷录入（点击即添加）</h4>
+        <div class="quick-foods" id="quickFoods"></div>
+        <div class="row" style="margin-top:14px">
+          <input id="dietName" placeholder="食物名称" style="flex:1;min-width:110px">
+          <input id="dietCal" type="number" placeholder="卡路里" style="width:110px">
+          <button class="btn green" onclick="addDiet()">记录</button>
+        </div>
+        <div id="dietList" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>📈 本周摄入趋势 <span class="sub">kcal / 天</span></h3>
+        <div class="chart-box"><canvas id="dietChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ===== 3. 运动打卡 ===== -->
+    <section class="view" id="view-exercise">
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="stat"><div class="k">🔥 连续打卡</div><div class="v" id="exStreak" style="color:var(--pink)">0 <small>天</small></div></div>
+        <div class="stat"><div class="k">本周运动</div><div class="v" id="exWeekDays">0 <small>次</small></div></div>
+        <div class="stat"><div class="k">本周消耗</div><div class="v" id="exWeekCal" style="color:var(--orange)">0 <small>kcal</small></div></div>
+      </div>
+      <div class="card">
+        <h3>🏃 选择运动</h3>
+        <div class="sports" id="sports"></div>
+        <div class="row">
+          <input id="exMin" type="number" placeholder="时长（分钟）" style="width:140px" oninput="autoExCal()">
+          <input id="exCal" type="number" placeholder="消耗 kcal" style="width:130px">
+          <button class="btn purple" onclick="addExercise()">打卡</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📅 本周打卡热力图</h3>
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+      <div class="card">
+        <h3>📋 今日运动记录</h3>
+        <div id="exList"></div>
+      </div>
+    </section>
+
+    <!-- ===== 4. 记账存钱 ===== -->
+    <section class="view" id="view-finance">
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="stat"><div class="k">本月收入</div><div class="v in" style="color:var(--green)" id="finIn">¥0</div></div>
+        <div class="stat"><div class="k">本月支出</div><div class="v" style="color:var(--pink)" id="finOut">¥0</div></div>
+        <div class="stat"><div class="k">本月结余</div><div class="v" id="finBal">¥0</div></div>
+      </div>
+      <div class="card">
+        <h3>💰 记一笔</h3>
+        <div class="row" style="margin-bottom:12px">
+          <div class="seg" id="finTypeSeg">
+            <button class="active out" onclick="setFinType('out')">支出</button>
+            <button class="in" onclick="setFinType('in')">收入</button>
+          </div>
+          <select id="finCat"></select>
+          <input id="finAmt" type="number" placeholder="金额 ¥" style="width:110px">
+          <input id="finNote" placeholder="备注（可选）" style="flex:1;min-width:110px">
+          <button class="btn" onclick="addFinance()">保存</button>
+        </div>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h3>🥧 本月支出分类</h3><div class="chart-box"><canvas id="finChart"></canvas></div></div>
+        <div class="card"><h3>📋 本月流水</h3><div id="finList" style="max-height:280px;overflow-y:auto"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== 5. 读书收获 ===== -->
+    <section class="view" id="view-books">
+      <div class="card">
+        <h3>📚 添加书籍</h3>
+        <div class="row">
+          <input id="bookTitle" placeholder="书名" style="flex:1.4;min-width:120px">
+          <input id="bookAuthor" placeholder="作者" style="flex:1;min-width:90px">
+          <input id="bookPages" type="number" placeholder="总页数" style="width:100px">
+          <button class="btn purple" onclick="addBook()">添加</button>
+        </div>
+      </div>
+      <div id="bookList"></div>
+    </section>
+
+    <!-- ===== 6. 心情记录 ===== -->
+    <section class="view" id="view-mood">
+      <div class="card">
+        <h3>🌈 今天心情怎么样？</h3>
+        <div class="moods" id="moodBtns"></div>
+      </div>
+      <div class="card">
+        <h3>📔 今日日记</h3>
+        <textarea id="diaryText" placeholder="写点什么，记录今天的心情…"></textarea>
+        <div class="row" style="margin-top:10px;justify-content:flex-end">
+          <button class="btn green" onclick="saveDiary()">保存日记</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📈 本周心情趋势</h3>
+        <div class="chart-box"><canvas id="moodChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ===== 7. 英语 ===== -->
+    <section class="view" id="view-english">
+      <div class="grid g3" style="margin-bottom:16px">
+        <div class="stat"><div class="k">累计单词</div><div class="v" id="engTotal">0</div></div>
+        <div class="stat"><div class="k">今日已学</div><div class="v" style="color:var(--green)" id="engToday">0</div></div>
+        <div class="stat"><div class="k">待复习</div><div class="v" style="color:var(--orange)" id="engReview">0</div></div>
+      </div>
+      <div class="card">
+        <h3>🎯 每日目标</h3>
+        <div class="row">
+          <input id="engGoal" type="number" style="width:90px" value="10">
+          <span style="font-size:13px;color:var(--text2)">个 / 天</span>
+          <button class="btn sm green" onclick="setEngGoal()">保存目标</button>
+          <div style="flex:1"></div>
+          <span style="font-size:12.5px;color:var(--text2)" id="engGoalText"></span>
+        </div>
+        <div class="gbar" style="margin-top:10px"><div id="engGoalBar" style="width:0%"></div></div>
+      </div>
+      <div class="card">
+        <h3>🃏 单词卡片 <span class="sub">点击卡片翻面查看释义</span></h3>
+        <div class="flashcard" id="flashcard" onclick="this.classList.toggle('flipped')">
+          <div class="flashcard-inner">
+            <div class="face front"><div class="fw" id="cardWord">暂无单词</div><div class="hint">点击翻面</div></div>
+            <div class="face back"><div class="fm" id="cardMeaning">请先添加单词</div><div class="hint">你认识它吗？</div></div>
+          </div>
+        </div>
+        <div class="row" style="justify-content:center">
+          <button class="btn gray" onclick="answerCard(false)">😕 不认识</button>
+          <button class="btn green" onclick="answerCard(true)">😀 认识</button>
+          <button class="btn gray" onclick="nextCard()">⏭ 跳过</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>➕ 添加单词</h3>
+        <div class="row">
+          <input id="engWord" placeholder="单词" style="flex:1;min-width:100px">
+          <input id="engMeaning" placeholder="释义" style="flex:1.5;min-width:130px">
+          <button class="btn purple" onclick="addWord()">添加</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📈 本周学习量 <span class="sub">个 / 天</span></h3>
+        <div class="chart-box"><canvas id="engChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ===== 8. 开发者 ===== -->
+    <section class="view" id="view-dev">
+      <div class="card">
+        <h3>🌗 外观模式</h3>
+        <div class="seg">
+          <button id="modeLight" onclick="setMode('light')">☀️ 亮色</button>
+          <button id="modeDark" onclick="setMode('dark')">🌙 暗色</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text2);margin-top:10px">切换后所有模块与图表配色实时跟随。中性色（背景/卡片/文字）按模式分别记忆，强调色两种模式共用。</p>
+      </div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>🎨 强调色 <span class="sub">品牌 & 功能色，实时生效</span></h3>
+          <div id="devAccents"></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn gray sm" onclick="resetColors('accents')">↺ 恢复默认强调色</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🖌 中性色 <span class="sub" id="neutralModeLabel">当前：亮色模式</span></h3>
+          <div id="devNeutrals"></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn gray sm" onclick="resetColors('neutrals')">↺ 恢复默认中性色</button>
+            <button class="btn pink sm" onclick="resetColors('all')">全部重置</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>💎 预设主题</h3>
+        <div class="swatches" id="presetSwatches"></div>
+        <p style="font-size:12.5px;color:var(--text2);margin-top:10px">点击色卡一键切换品牌主色，快速预览不同气质的界面。</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= 周度分析弹窗 ================= -->
+<div class="modal" id="weekModal" onclick="if(event.target===this)closeWeekModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeWeekModal()">✕</button>
+    <h2>📊 周度数据分析</h2>
+    <div class="range" id="weekRange"></div>
+    <div class="wk-grid" id="weekGrid"></div>
+    <h3 style="font-size:14px;margin:6px 0 10px">🤖 AI 洞察与建议</h3>
+    <div id="insights"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   数据层
+============================================================ */
+const LS_KEY = 'workbench_v1';
+const THEME_VER = 2;   // 主题默认值版本：变更默认主题色时递增，旧缓存将自动重置为新默认
+const DEFAULT_STATE = {
+  todos: {},            // date -> [{id,text,pri,done}]
+  diet: { target: 2000, log: {} },  // log: date -> {breakfast:[{id,name,cal}],...}
+  exercise: {},         // date -> [{id,type,min,cal}]
+  finance: [],          // [{id,date,type,cat,amt,note}]
+  books: [],            // [{id,title,author,pages,read,notes:[{d,t}]}]
+  mood: {},             // date -> {score,diary}
+  english: { goal: 10, daily: {}, words: [] }, // words:[{id,w,m,box,next}]
+  theme: null,
+  themeVer: THEME_VER
+};
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      const merged = Object.assign(structuredClone(DEFAULT_STATE), s);
+      // 旧缓存主题版本不匹配时，重置为新默认主题色（不清除业务数据）
+      if(s.themeVer !== THEME_VER){ merged.theme = null; merged.themeVer = THEME_VER; }
+      return merged;
+    }
+  }catch(e){ console.warn('数据读取失败', e); }
+  return structuredClone(DEFAULT_STATE);
+}
+let state = loadState();
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const key = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today = () => key(new Date());
+function weekDates(){
+  const now = new Date(); const off = (now.getDay()+6)%7;
+  const mon = new Date(now); mon.setDate(now.getDate()-off);
+  return Array.from({length:7},(_,i)=>{ const d = new Date(mon); d.setDate(mon.getDate()+i); return key(d); });
+}
+function addDays(k, n){ const [y,m,d] = k.split('-').map(Number); const dt = new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return key(dt); }
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove('show'), 2200); }
+const fmtY = n => (n<0?'-¥':'¥') + Math.abs(Number(n)||0).toLocaleString('zh-CN',{maximumFractionDigits:2});
+
+/* ============================================================
+   主题层（开发者模块）
+============================================================ */
+const ACCENTS = [
+  {k:'brand',  name:'品牌绿',  def:'#30b94d'},
+  {k:'teal',   name:'活力青',  def:'#5ac8fa'},
+  {k:'indigo', name:'深青',    def:'#1f8a70'},
+  {k:'blue',   name:'功能蓝',  def:'#0071e3'},
+  {k:'green',  name:'成功绿',  def:'#34c759'},
+  {k:'orange', name:'提醒橙',  def:'#ff9500'},
+  {k:'pink',   name:'警示粉',  def:'#ff375f'},
+];
+const NEUTRALS = [
+  {k:'bg',      name:'页面背景'},
+  {k:'card',    name:'卡片背景'},
+  {k:'sidebar', name:'侧边栏背景'},
+  {k:'text',    name:'主文字色'},
+  {k:'text2',   name:'次级文字'},
+  {k:'border',  name:'描边/分隔线', alpha:true},
+];
+const NEUTRAL_DEF = {
+  light: {bg:'#f2f2f7',card:'#ffffff',sidebar:'#ffffff',text:'#1d1d1f',text2:'#86868b',border:'rgba(0,0,0,.08)'},
+  dark:  {bg:'#111113',card:'#1e1e21',sidebar:'#18181b',text:'#f5f5f7',text2:'#98989e',border:'rgba(255,255,255,.10)'}
+};
+const PRESETS = [
+  {name:'薄荷绿', brand:'#30b94d', indigo:'#1f8a70'},
+  {name:'海洋蓝', brand:'#0a84ff', indigo:'#5e5ce6'},
+  {name:'经典紫', brand:'#af52de', indigo:'#5856d6'},
+  {name:'落日橙', brand:'#ff9500', indigo:'#e0655b'},
+  {name:'樱花粉', brand:'#ff375f', indigo:'#bf5af2'},
+  {name:'石墨黑', brand:'#6e6e73', indigo:'#48484a'},
+];
+
+function ensureTheme(){
+  if(!state.theme){
+    state.theme = { mode:'light',
+      accents: Object.fromEntries(ACCENTS.map(a=>[a.k,a.def])),
+      neutrals: { light:{...NEUTRAL_DEF.light}, dark:{...NEUTRAL_DEF.dark} } };
+  }
+  state.theme.neutrals = state.theme.neutrals || { light:{...NEUTRAL_DEF.light}, dark:{...NEUTRAL_DEF.dark} };
+  for(const m of ['light','dark']) state.theme.neutrals[m] = Object.assign({...NEUTRAL_DEF[m]}, state.theme.neutrals[m]);
+  for(const a of ACCENTS) if(!state.theme.accents[a.k]) state.theme.accents[a.k] = a.def;
+}
+function applyTheme(){
+  ensureTheme();
+  const th = state.theme, root = document.documentElement;
+  for(const a of ACCENTS) root.style.setProperty('--'+a.k, th.accents[a.k]);
+  for(const n of NEUTRALS){
+    const v = th.neutrals[th.mode][n.k] || NEUTRAL_DEF[th.mode][n.k];
+    root.style.setProperty('--'+n.k, v);
+  }
+  document.body.style.background = th.neutrals[th.mode].bg;
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.content = th.neutrals[th.mode].bg || NEUTRAL_DEF[th.mode].bg;
+  const ml = document.getElementById('modeLight'), md = document.getElementById('modeDark');
+  if(ml){ ml.style.background = th.mode==='light' ? 'var(--card)' : 'none'; ml.style.color = th.mode==='light' ? 'var(--text)' : 'var(--text2)';
+          md.style.background = th.mode==='dark' ? 'var(--card)' : 'none';  md.style.color = th.mode==='dark' ? 'var(--text)' : 'var(--text2)'; }
+  if(currentView && typeof VIEW_RENDER[currentView] === 'function') VIEW_RENDER[currentView]();
+}
+function setMode(m){ ensureTheme(); state.theme.mode = m; save(); applyTheme(); renderDev(); toast(m==='dark'?'已切换到暗色模式 🌙':'已切换到亮色模式 ☀️'); }
+function setVar(group, k, v){
+  ensureTheme();
+  if(group==='accents') state.theme.accents[k] = v;
+  else state.theme.neutrals[state.theme.mode][k] = v;
+  save(); applyTheme();
+}
+function resetColors(scope){
+  ensureTheme();
+  if(scope==='accents' || scope==='all') ACCENTS.forEach(a=>state.theme.accents[a.k]=a.def);
+  if(scope==='neutrals' || scope==='all') state.theme.neutrals[state.theme.mode] = {...NEUTRAL_DEF[state.theme.mode]};
+  save(); applyTheme(); renderDev(); toast('已恢复默认配色 ↺');
+}
+
+/* ============================================================
+   视图切换
+============================================================ */
+const NAV_ITEMS = [
+  {id:'todos',    ico:'✅', name:'每日计划'},
+  {id:'diet',     ico:'🥗', name:'饮食记录'},
+  {id:'exercise', ico:'🏃', name:'运动打卡'},
+  {id:'finance',  ico:'💰', name:'记账存钱'},
+  {id:'books',    ico:'📚', name:'读书收获'},
+  {id:'mood',     ico:'🌈', name:'心情记录'},
+  {id:'english',  ico:'🔤', name:'英语学习'},
+  {id:'dev',      ico:'🎨', name:'开发者'},
+];
+let currentView = 'todos';
+const VIEW_RENDER = {
+  todos: renderTodos, diet: renderDiet, exercise: renderExercise, finance: renderFinance,
+  books: renderBooks, mood: renderMood, english: renderEnglish, dev: renderDev
+};
+function buildNav(){
+  document.getElementById('nav').innerHTML = NAV_ITEMS.map(n=>
+    `<button class="nav-item" data-v="${n.id}" onclick="switchView('${n.id}')"><span class="ico">${n.ico}</span>${n.name}</button>`).join('');
+}
+function switchView(v){
+  currentView = v;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const item = NAV_ITEMS.find(n=>n.id===v);
+  document.getElementById('viewTitle').textContent = item ? item.name : '';
+  toggleDrawer(false);
+  VIEW_RENDER[v]();
+  window.scrollTo({top:0});
+}
+function toggleDrawer(open){
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('overlay').classList.toggle('show', open);
+}
+
+/* ============================================================
+   1. 每日计划
+============================================================ */
+function addTodo(){
+  const inp = document.getElementById('todoInput'), pri = document.getElementById('todoPri').value;
+  const text = inp.value.trim();
+  if(!text) return toast('请输入待办内容');
+  const t = today();
+  (state.todos[t] = state.todos[t]||[]).push({id:uid(), text, pri, done:false});
+  inp.value = ''; save(); renderTodos();
+}
+function toggleTodo(id){
+  const list = state.todos[today()]||[];
+  const it = list.find(x=>x.id===id); if(it) it.done = !it.done;
+  save(); renderTodos();
+}
+function delTodo(id){
+  state.todos[today()] = (state.todos[today()]||[]).filter(x=>x.id!==id);
+  save(); renderTodos();
+}
+function renderTodos(){
+  const t = today(), list = state.todos[t]||[];
+  const order = {h:0,m:1,l:2};
+  const sorted = [...list].sort((a,b)=> order[a.pri]-order[b.pri] || a.done-b.done);
+  const done = list.filter(x=>x.done).length;
+  const rate = list.length ? Math.round(done/list.length*100) : 0;
+  document.getElementById('todoRate').textContent = rate+'%';
+  document.getElementById('todoTotal').textContent = list.length;
+  document.getElementById('todoDone').textContent = done;
+  document.getElementById('todoList').innerHTML = sorted.length ? sorted.map(x=>
+    `<div class="todo-item ${x.done?'done':''}">
+      <button class="todo-check" onclick="toggleTodo('${x.id}')">${x.done?'✓':''}</button>
+      <span class="todo-text">${esc(x.text)}</span>
+      <span class="pri ${x.pri}">${x.pri==='h'?'高':x.pri==='m'?'中':'低'}</span>
+      <button class="del" onclick="delTodo('${x.id}')">✕</button>
+    </div>`).join('') : '<div class="empty">今天还没有待办，添加一个吧 ✨</div>';
+}
+
+/* ============================================================
+   2. 饮食记录
+============================================================ */
+const MEALS = [
+  {k:'breakfast', name:'🌅 早餐'}, {k:'lunch', name:'☀️ 午餐'},
+  {k:'dinner', name:'🌙 晚餐'}, {k:'snack', name:'🍪 加餐'}
+];
+const QUICK_FOODS = [
+  {n:'米饭',c:200},{n:'鸡蛋',c:80},{n:'牛奶',c:150},{n:'面条',c:350},{n:'全麦面包',c:120},
+  {n:'苹果',c:100},{n:'香蕉',c:105},{n:'鸡胸肉',c:165},{n:'牛肉',c:250},{n:'三文鱼',c:200},
+  {n:'豆腐',c:100},{n:'沙拉',c:150},{n:'汉堡',c:550},{n:'披萨',c:600},{n:'薯条',c:300},
+  {n:'奶茶',c:400},{n:'拿铁',c:150},{n:'豆浆',c:100},{n:'包子',c:250},{n:'饺子',c:400}
+];
+let curMeal = 'breakfast';
+function dietLog(d){ return state.diet.log[d] = state.diet.log[d] || {breakfast:[],lunch:[],dinner:[],snack:[]}; }
+function dietTotal(d){ const l = state.diet.log[d]; if(!l) return 0;
+  return MEALS.reduce((s,m)=> s + (l[m.k]||[]).reduce((a,x)=>a+Number(x.cal||0),0), 0); }
+function setMeal(k){ curMeal = k; renderDiet(); }
+function addDiet(name, cal){
+  if(name==null){ name = document.getElementById('dietName').value.trim(); cal = Number(document.getElementById('dietCal').value); }
+  if(!name || !cal || cal<=0) return toast('请填写食物名称和卡路里');
+  dietLog(today())[curMeal].push({id:uid(), name, cal});
+  save(); renderDiet(); toast(`已记录：${name} ${cal} kcal`);
+}
+function delDiet(meal, id){
+  const l = dietLog(today()); l[meal] = (l[meal]||[]).filter(x=>x.id!==id);
+  save(); renderDiet();
+}
+function setDietTarget(){
+  const v = Number(document.getElementById('dietTarget').value);
+  if(!v || v<=0) return toast('请输入有效的目标值');
+  state.diet.target = v; save(); renderDiet(); toast('每日目标已更新 🎯');
+}
+function renderDiet(){
+  const d = today(), total = dietTotal(d), target = state.diet.target || 2000;
+  const remain = target - total;
+  document.getElementById('dietTarget').value = target;
+  document.getElementById('dietIn').innerHTML = `${total} <small>kcal</small>`;
+  const remEl = document.getElementById('dietRemain');
+  remEl.innerHTML = `${Math.abs(remain)} <small>kcal</small>`;
+  remEl.style.color = remain >= 0 ? 'var(--green)' : 'var(--pink)';
+  document.getElementById('dietRemainLabel').textContent = remain >= 0 ? '剩余额度' : '超出额度';
+  const ratio = Math.min(total/target, 1);
+  const C = 2*Math.PI*52;
+  const ring = document.getElementById('dietRing');
+  ring.style.strokeDasharray = C;
+  ring.style.strokeDashoffset = C*(1-ratio);
+  ring.style.stroke = total > target ? 'var(--pink)' : 'var(--green)';
+  document.getElementById('ringPct').textContent = Math.round(total/target*100)+'%';
+  const l = dietLog(d);
+  document.getElementById('dietMealBreak').innerHTML = MEALS.map(m=>{
+    const c = (l[m.k]||[]).reduce((a,x)=>a+Number(x.cal||0),0);
+    return `<div>${m.name.replace(/^\S+\s/,'')}　<b style="color:var(--text)">${c}</b> kcal</div>`;
+  }).join('');
+  document.getElementById('mealTabs').innerHTML = MEALS.map(m=>
+    `<button class="meal-tab ${curMeal===m.k?'active':''}" onclick="setMeal('${m.k}')">${m.name}</button>`).join('');
+  document.getElementById('quickFoods').innerHTML = QUICK_FOODS.map(f=>
+    `<button class="qfood" onclick="addDiet('${esc(f.n)}',${f.c})">${esc(f.n)} · ${f.c}</button>`).join('');
+  const items = l[curMeal]||[];
+  document.getElementById('dietList').innerHTML = items.length ? items.map(x=>
+    `<div class="diet-item"><span>${esc(x.name)}</span><span style="display:flex;gap:10px;align-items:center">
+      <span class="cal">${x.cal} kcal</span><button class="del" onclick="delDiet('${curMeal}','${x.id}')">✕</button></span></div>`).join('')
+    : '<div class="empty">当前餐次还没有记录</div>';
+  // 周柱状图
+  const wd = weekDates();
+  const data = wd.map(k=>dietTotal(k));
+  mkChart('dietChart', {
+    type:'bar',
+    data:{ labels: wd.map(k=>k.slice(5).replace('-','/')),
+      datasets:[
+        {label:'摄入', data, backgroundColor: data.map(v=> v>target ? 'rgba(255,55,95,.75)' : 'rgba(52,199,89,.75)'), borderRadius:8, maxBarThickness:34},
+        {label:'目标', data: wd.map(()=>target), type:'line', borderColor:cv('--orange'), borderDash:[6,5], pointRadius:0, borderWidth:2}
+      ]},
+    options: chartOpts(false, k=>k+' kcal')
+  });
+}
+
+/* ============================================================
+   3. 运动打卡
+============================================================ */
+const SPORTS = [
+  {n:'跑步',e:'🏃',f:10},{n:'游泳',e:'🏊',f:9},{n:'健身',e:'💪',f:7},{n:'骑行',e:'🚴',f:8},{n:'瑜伽',e:'🧘',f:4},
+  {n:'篮球',e:'🏀',f:8},{n:'跳绳',e:'🪢',f:11},{n:'散步',e:'🚶',f:4},{n:'羽毛球',e:'🏸',f:6},{n:'乒乓球',e:'🏓',f:5}
+];
+let curSport = SPORTS[0];
+function exList(d){ return state.exercise[d] = state.exercise[d]||[]; }
+function autoExCal(){
+  const m = Number(document.getElementById('exMin').value)||0;
+  document.getElementById('exCal').value = m ? Math.round(m*curSport.f) : '';
+}
+function addExercise(){
+  const min = Number(document.getElementById('exMin').value);
+  let cal = Number(document.getElementById('exCal').value);
+  if(!min || min<=0) return toast('请输入运动时长');
+  if(!cal) cal = Math.round(min*curSport.f);
+  exList(today()).push({id:uid(), type:curSport.n, emoji:curSport.e, min, cal});
+  save(); renderExercise(); toast(`打卡成功：${curSport.n} ${min} 分钟 🔥`);
+  document.getElementById('exMin').value=''; document.getElementById('exCal').value='';
+}
+function delExercise(id){ state.exercise[today()] = exList(today()).filter(x=>x.id!==id); save(); renderExercise(); }
+function exStreak(){
+  let s = 0, d = new Date();
+  if(!(state.exercise[key(d)]||[]).length) d.setDate(d.getDate()-1);
+  while((state.exercise[key(d)]||[]).length){ s++; d.setDate(d.getDate()-1); }
+  return s;
+}
+function renderExercise(){
+  const wd = weekDates(), t = today();
+  document.getElementById('exStreak').innerHTML = `${exStreak()} <small>天</small>`;
+  let wDays = 0, wCal = 0;
+  wd.forEach(k=>{ const l = state.exercise[k]||[]; if(l.length) wDays++; wCal += l.reduce((a,x)=>a+Number(x.cal||0),0); });
+  document.getElementById('exWeekDays').innerHTML = `${wDays} <small>次</small>`;
+  document.getElementById('exWeekCal').innerHTML = `${wCal} <small>kcal</small>`;
+  document.getElementById('sports').innerHTML = SPORTS.map(s=>
+    `<button class="sport ${s===curSport?'active':''}" onclick="curSport=SPORTS[${SPORTS.indexOf(s)}];renderExercise()">
+      <span class="se">${s.e}</span>${s.n}</button>`).join('');
+  // 热力图
+  const labels = ['一','二','三','四','五','六','日'];
+  document.getElementById('heatmap').innerHTML = wd.map((k,i)=>{
+    const cal = (state.exercise[k]||[]).reduce((a,x)=>a+Number(x.cal||0),0);
+    const lv = cal===0?0 : cal<150?1 : cal<350?2 : 3;
+    return `<div class="heat-cell h${lv} ${k===t?'today':''} ${cal?'has-val':''}"><span class="hd">${labels[i]}</span>${cal?`<span class="hv">${cal}</span>`:''}</div>`;
+  }).join('');
+  const list = exList(t);
+  document.getElementById('exList').innerHTML = list.length ? list.map(x=>
+    `<div class="ex-item"><span>${x.emoji||'🏃'} ${esc(x.type)} · ${x.min} 分钟</span>
+      <span style="display:flex;gap:10px;align-items:center"><span style="color:var(--orange);font-weight:600;font-size:13px">${x.cal} kcal</span>
+      <button class="del" onclick="delExercise('${x.id}')">✕</button></span></div>`).join('')
+    : '<div class="empty">今天还没有运动，动起来！💪</div>';
+}
+
+/* ============================================================
+   4. 记账存钱
+============================================================ */
+const FIN_CATS = ['餐饮','交通','购物','娱乐','住房','医疗','教育','通讯','服饰','工资','理财','其他'];
+let finType = 'out';
+function setFinType(t){
+  finType = t;
+  document.querySelectorAll('#finTypeSeg button').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  renderFinance();
+}
+function monthNow(){ const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function addFinance(){
+  const amt = Number(document.getElementById('finAmt').value);
+  const cat = document.getElementById('finCat').value;
+  const note = document.getElementById('finNote').value.trim();
+  if(!amt || amt<=0) return toast('请输入有效金额');
+  state.finance.unshift({id:uid(), date:today(), type:finType, cat, amt, note});
+  save(); renderFinance();
+  document.getElementById('finAmt').value=''; document.getElementById('finNote').value='';
+  toast(`${finType==='in'?'收入':'支出'} ¥${amt} 已记录`);
+}
+function delFinance(id){ state.finance = state.finance.filter(x=>x.id!==id); save(); renderFinance(); }
+function renderFinance(){
+  document.querySelectorAll('#finTypeSeg button').forEach((b,i)=>{
+    b.dataset.t = i===0?'out':'in';
+    b.className = b.className.replace(/ (in|out)$/,'');
+    if(b.classList.contains('active')) b.classList.add(finType);
+  });
+  const sel = document.getElementById('finCat');
+  const want = finType==='in' ? ['工资','理财','其他'] : FIN_CATS;
+  if(sel.dataset.t !== finType){ sel.innerHTML = want.map(c=>`<option>${c}</option>`).join(''); sel.dataset.t = finType; }
+  const m = monthNow();
+  const recs = state.finance.filter(x=>x.date.startsWith(m));
+  const inc = recs.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0);
+  const out = recs.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0);
+  document.getElementById('finIn').textContent = fmtY(inc);
+  document.getElementById('finOut').textContent = fmtY(out);
+  const bal = inc - out;
+  document.getElementById('finBal').textContent = fmtY(bal);
+  document.getElementById('finBal').style.color = bal>=0 ? 'var(--green)' : 'var(--pink)';
+  document.getElementById('finList').innerHTML = recs.length ? recs.slice(0,30).map(x=>
+    `<div class="fin-item"><span><span class="tag">${x.cat}</span> ${esc(x.note||'')}
+      <small style="color:var(--text2);margin-left:6px">${x.date.slice(5)}</small></span>
+      <span style="display:flex;gap:8px;align-items:center"><span class="amt ${x.type}">${x.type==='in'?'+':'-'}${fmtY(x.amt)}</span>
+      <button class="del" onclick="delFinance('${x.id}')">✕</button></span></div>`).join('')
+    : '<div class="empty">本月暂无收支记录</div>';
+  // 饼图
+  const byCat = {};
+  recs.filter(x=>x.type==='out').forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amt);
+  const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const palette = [cv('--brand'),cv('--indigo'),cv('--blue'),cv('--teal'),cv('--green'),cv('--orange'),cv('--pink'),'#ffcc00','#a2845e','#8e8e93','#636366','#c7c7cc'];
+  mkChart('finChart', entries.length ? {
+    type:'pie',
+    data:{ labels: entries.map(e=>e[0]),
+      datasets:[{data:entries.map(e=>e[1]), backgroundColor: palette.slice(0,entries.length), borderWidth:0, hoverOffset:8}]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{legend:{position:'right', labels:{color:cv('--text2'), boxWidth:12, font:{size:11}}}} }
+  } : { type:'pie', data:{labels:['暂无支出'], datasets:[{data:[1], backgroundColor:['var(--bg)'], borderWidth:0}]},
+        options:{plugins:{legend:{display:false}, tooltip:{enabled:false}}, cutout:'55%'} });
+}
+
+/* ============================================================
+   5. 读书收获
+============================================================ */
+function addBook(){
+  const title = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('bookAuthor').value.trim();
+  const pages = Number(document.getElementById('bookPages').value);
+  if(!title || !pages) return toast('请填写书名和总页数');
+  state.books.unshift({id:uid(), title, author, pages, read:0, notes:[]});
+  save(); renderBooks();
+  document.getElementById('bookTitle').value=''; document.getElementById('bookAuthor').value=''; document.getElementById('bookPages').value='';
+  toast(`《${title}》已加入书架 📚`);
+}
+function delBook(id){ state.books = state.books.filter(b=>b.id!==id); save(); renderBooks(); }
+function updateRead(id, v){
+  const b = state.books.find(x=>x.id===id); if(!b) return;
+  b.read = Math.max(0, Math.min(Number(v)||0, b.pages));
+  save(); renderBooks();
+}
+function addNote(id){
+  const b = state.books.find(x=>x.id===id); if(!b) return;
+  const ta = document.getElementById('note-'+id);
+  const t = ta.value.trim(); if(!t) return toast('笔记内容为空');
+  b.notes.unshift({d:today(), t});
+  save(); renderBooks(); toast('读书笔记已保存 ✍️');
+}
+function renderBooks(){
+  const box = document.getElementById('bookList');
+  box.innerHTML = state.books.length ? state.books.map(b=>{
+    const pct = b.pages ? Math.min(100, Math.round(b.read/b.pages*100)) : 0;
+    return `<div class="book">
+      <div class="bh"><div><b>《${esc(b.title)}》</b>${b.author?`<small>${esc(b.author)} · 共 ${b.pages} 页</small>`:''}</div>
+        <button class="del" onclick="delBook('${b.id}')">✕</button></div>
+      <div class="pbar"><div style="width:${pct}%"></div></div>
+      <div class="pbar lb" style="height:auto;background:none;margin-top:0"><span>进度 ${pct}%</span><span>${b.read} / ${b.pages} 页</span></div>
+      <div class="row" style="margin-top:12px">
+        <input type="number" id="pg-${b.id}" placeholder="当前页码" value="${b.read}" style="width:120px">
+        <button class="btn sm purple" onclick="updateRead('${b.id}', document.getElementById('pg-${b.id}').value)">更新进度</button>
+      </div>
+      <div style="margin-top:12px">
+        <textarea id="note-${b.id}" placeholder="写下这一段的收获与思考…"></textarea>
+        <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm green" onclick="addNote('${b.id}')">保存笔记</button></div>
+        ${b.notes.map(n=>`<div class="note"><small>📝 ${n.d}</small>${esc(n.t)}</div>`).join('')}
+      </div>
+    </div>`;
+  }).join('') : '<div class="card"><div class="empty">书架空空如也，添加第一本书吧 📖</div></div>';
+}
+
+/* ============================================================
+   6. 心情记录
+============================================================ */
+const MOODS = [
+  {e:'😄', name:'开心', s:5}, {e:'😊', name:'不错', s:4}, {e:'😌', name:'平静', s:3},
+  {e:'😪', name:'疲惫', s:2}, {e:'😔', name:'低落', s:2}, {e:'😤', name:'烦躁', s:1}
+];
+function setMood(i){
+  const t = today();
+  state.mood[t] = state.mood[t] || {score:0, diary:''};
+  state.mood[t].score = state.mood[t].score === i+1 ? 0 : i+1;
+  save(); renderMood();
+}
+function saveDiary(){
+  const t = today();
+  state.mood[t] = state.mood[t] || {score:0, diary:''};
+  state.mood[t].diary = document.getElementById('diaryText').value;
+  save(); toast('日记已保存 📔');
+}
+function renderMood(){
+  const t = today(), cur = state.mood[t] || {score:0, diary:''};
+  document.getElementById('moodBtns').innerHTML = MOODS.map((m,i)=>
+    `<button class="mood ${cur.score===i+1?'active':''}" onclick="setMood(${i})">${m.e}<small>${m.name}</small></button>`).join('');
+  document.getElementById('diaryText').value = cur.diary||'';
+  const wd = weekDates();
+  const data = wd.map(k=>{ const m = state.mood[k]; return m && m.score ? MOODS[m.score-1].s : null; });
+  mkChart('moodChart', {
+    type:'line',
+    data:{ labels: wd.map(k=>k.slice(5).replace('-','/')),
+      datasets:[{label:'心情指数', data, borderColor:cv('--brand'), backgroundColor:cv('--brand')+'33',
+        fill:true, tension:.4, borderWidth:3, pointRadius:5, pointBackgroundColor:cv('--brand'),
+        spanGaps:true}]},
+    options: chartOpts(true, v=> v!=null ? MOODS.find(m=>m.s===v)?.name || v : '未记录')
+  });
+}
+
+/* ============================================================
+   7. 英语
+============================================================ */
+const REVIEW_ITV = [1,2,4,7,15,30];
+function engQueue(){ const t = today(); return state.english.words.filter(w=>w.next<=t); }
+let curCardIdx = 0;
+function addWord(){
+  const w = document.getElementById('engWord').value.trim();
+  const m = document.getElementById('engMeaning').value.trim();
+  if(!w || !m) return toast('请填写单词和释义');
+  if(state.english.words.some(x=>x.w.toLowerCase()===w.toLowerCase())) return toast('该单词已在词库中');
+  state.english.words.push({id:uid(), w, m, box:0, next:today()});
+  save(); renderEnglish();
+  document.getElementById('engWord').value=''; document.getElementById('engMeaning').value='';
+  toast(`「${w}」已加入词库 🔤`);
+}
+function currentCard(){
+  const q = engQueue();
+  if(q.length) return q[curCardIdx % q.length];
+  return state.english.words[curCardIdx % (state.english.words.length||1)] || null;
+}
+function nextCard(){ curCardIdx++; renderEnglish(); }
+function answerCard(know){
+  const card = currentCard(); if(!card) return toast('词库为空，请先添加单词');
+  if(know){ card.box = Math.min(REVIEW_ITV.length-1, card.box+1); card.next = addDays(today(), REVIEW_ITV[card.box]); }
+  else { card.box = 0; card.next = addDays(today(), 1); }
+  const t = today();
+  state.english.daily[t] = (state.english.daily[t]||0)+1;
+  save();
+  document.getElementById('flashcard').classList.remove('flipped');
+  nextCard();
+}
+function setEngGoal(){
+  const v = Number(document.getElementById('engGoal').value);
+  if(!v || v<=0) return toast('请输入有效目标');
+  state.english.goal = v; save(); renderEnglish(); toast(`每日目标已设为 ${v} 个单词 🎯`);
+}
+function renderEnglish(){
+  const t = today(), eng = state.english;
+  const todayCnt = eng.daily[t]||0, q = engQueue();
+  document.getElementById('engTotal').textContent = eng.words.length;
+  document.getElementById('engToday').textContent = todayCnt;
+  document.getElementById('engReview').textContent = q.length;
+  document.getElementById('engGoal').value = eng.goal;
+  document.getElementById('engGoalText').textContent = `今日进度：${todayCnt} / ${eng.goal}`;
+  document.getElementById('engGoalBar').style.width = Math.min(100, todayCnt/eng.goal*100)+'%';
+  const card = currentCard();
+  document.getElementById('cardWord').textContent = card ? card.w : '暂无单词';
+  document.getElementById('cardMeaning').textContent = card ? card.m : '请先在下方添加单词';
+  document.getElementById('flashcard').classList.remove('flipped');
+  const wd = weekDates();
+  mkChart('engChart', {
+    type:'bar',
+    data:{ labels: wd.map(k=>k.slice(5).replace('-','/')),
+      datasets:[{label:'学习单词数', data: wd.map(k=>eng.daily[k]||0),
+        backgroundColor:'rgba(88,86,214,.75)', borderRadius:8, maxBarThickness:34}]},
+    options: chartOpts(false, v=>v+' 个')
+  });
+}
+
+/* ============================================================
+   8. 开发者渲染
+============================================================ */
+function renderDev(){
+  ensureTheme();
+  const accBox = document.getElementById('devAccents');
+  accBox.innerHTML = ACCENTS.map(a=>
+    `<div class="color-row"><label>${a.name}</label><span class="cv">${state.theme.accents[a.k]}</span>
+      <input type="color" value="${toHex(state.theme.accents[a.k])}" oninput="setVar('accents','${a.k}',this.value)"></div>`).join('');
+  const neuBox = document.getElementById('devNeutrals');
+  const cur = state.theme.neutrals[state.theme.mode];
+  neuBox.innerHTML = NEUTRALS.map(n=>
+    `<div class="color-row"><label>${n.name}</label><span class="cv">${cur[n.k]}</span>
+      <input type="color" value="${toHex(cur[n.k])}" oninput="setVar('neutrals','${n.k}', this.value${n.alpha?"+hexAlpha(cur['"+n.k+"'])":''})"></div>`).join('');
+  document.getElementById('neutralModeLabel').textContent = '当前：'+(state.theme.mode==='light'?'亮色':'暗色')+'模式';
+  document.getElementById('presetSwatches').innerHTML = PRESETS.map((p,i)=>
+    `<div class="swatch" title="${p.name}" style="background:linear-gradient(135deg,${p.brand},${p.indigo})"
+      onclick="applyPreset(${i})"></div>`).join('');
+  applyThemeModeBtns();
+}
+function applyPreset(i){
+  const p = PRESETS[i];
+  ensureTheme();
+  state.theme.accents.brand = p.brand;
+  state.theme.accents.indigo = p.indigo;
+  save(); applyTheme(); renderDev(); toast(`已应用「${p.name}」预设 💎`);
+}
+function applyThemeModeBtns(){
+  const th = state.theme; if(!th) return;
+  const ml = document.getElementById('modeLight'), md = document.getElementById('modeDark');
+  ml.style.background = th.mode==='light' ? 'var(--card)' : 'transparent';
+  ml.style.color = th.mode==='light' ? 'var(--text)' : 'var(--text2)';
+  ml.style.boxShadow = th.mode==='light' ? '0 2px 8px rgba(0,0,0,.08)' : 'none';
+  md.style.background = th.mode==='dark' ? 'var(--card)' : 'transparent';
+  md.style.color = th.mode==='dark' ? 'var(--text)' : 'var(--text2)';
+  md.style.boxShadow = th.mode==='dark' ? '0 2px 8px rgba(0,0,0,.3)' : 'none';
+}
+function toHex(c){
+  c = (c||'').trim();
+  if(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c)) return c.slice(0,7);
+  const m = c.match(/rgba?\(([^)]+)\)/i);
+  if(m){ const p = m[1].split(',').map(x=>parseFloat(x));
+    return '#'+p.slice(0,3).map(x=>pad2(Math.round(x).toString(16))).join(''); }
+  return '#888888';
+}
+const pad2 = s => s.length<2 ? '0'+s : s;
+function hexAlpha(rgba){
+  const m = String(rgba||'').match(/rgba?\(([^)]+)\)/i);
+  if(m){ const p = m[1].split(','); if(p.length>3){ const a = parseFloat(p[3]); if(!isNaN(a)) return pad2(Math.round(a*255).toString(16)); } }
+  return '';
+}
+
+/* ============================================================
+   Chart.js 公共
+============================================================ */
+const charts = {};
+function cv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function mkChart(id, cfg){
+  if(charts[id]){ try{charts[id].destroy();}catch(e){} }
+  const el = document.getElementById(id); if(!el || typeof Chart === 'undefined') return;
+  charts[id] = new Chart(el, cfg);
+}
+function chartOpts(beginZero, fmt){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{ callbacks:{ label: ctx => fmt ? fmt(ctx.parsed.y) : ctx.parsed.y } }
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:cv('--text2'), font:{size:11}} },
+      y:{ beginAtZero:beginZero, grid:{color:cv('--border')}, ticks:{color:cv('--text2'), font:{size:11}} }
+    }
+  };
+}
+
+/* ============================================================
+   周度数据分析
+============================================================ */
+function weekSummary(){
+  const wd = weekDates();
+  let todoTotal=0, todoDone=0, calSum=0, calDays=0, overDays=0;
+  wd.forEach(k=>{
+    (state.todos[k]||[]).forEach(x=>{ todoTotal++; if(x.done) todoDone++; });
+    const c = dietTotal(k);
+    if(c>0){ calSum+=c; calDays++; if(c>state.diet.target) overDays++; }
+  });
+  let exDays=0, exMin=0, exCal=0;
+  wd.forEach(k=>{ const l = state.exercise[k]||[]; if(l.length){ exDays++; exMin += l.reduce((a,x)=>a+Number(x.min||0),0); exCal += l.reduce((a,x)=>a+Number(x.cal||0),0);} });
+  const m = monthNow();
+  const fin = state.finance.filter(x=>x.date.startsWith(m));
+  const income = fin.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0);
+  const expense = fin.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0);
+  let moodSum=0, moodDays=0;
+  wd.forEach(k=>{ const mm = state.mood[k]; if(mm && mm.score){ moodSum += MOODS[mm.score-1].s; moodDays++; } });
+  let engDays=0, engWords=0;
+  wd.forEach(k=>{ const c = state.english.daily[k]||0; if(c>0){ engDays++; engWords+=c; } });
+  return { wd, todoTotal, todoDone, avgCal: calDays?Math.round(calSum/calDays):0, overDays,
+    exDays, exMin, exCal, income, expense, moodAvg: moodDays?(moodSum/moodDays):0, moodDays, engDays, engWords, target: state.diet.target };
+}
+function buildInsights(s){
+  const out = [];
+  const dayNames = s.wd.map((k,i)=>({k, i}));
+  if(s.todoTotal){
+    const p = Math.round(s.todoDone/s.todoTotal*100);
+    out.push(p>=70 ? `✅ 本周完成待办 <b>${s.todoDone}/${s.todoTotal}</b>（${p}%），执行力在线，继续保持这个节奏！`
+                   : `⏳ 本周待办完成率 <b>${p}%</b>（${s.todoDone}/${s.todoTotal}）。建议把大任务拆成 25 分钟的小块，优先处理高优先级项。`);
+  } else out.push('📝 本周还没有待办记录，试试每天列出 3 件最重要的事。');
+  if(s.avgCal){
+    if(s.overDays>=3) out.push(`🍽 本周平均每日摄入 <b>${s.avgCal} kcal</b>，有 <b>${s.overDays}</b> 天超过目标 ${s.target} kcal，注意晚餐与加餐的控制。`);
+    else out.push(`🥗 本周平均每日摄入 <b>${s.avgCal} kcal</b>，整体在目标（${s.target} kcal）附近，饮食节奏很稳。`);
+  } else out.push('🍽 本周暂无饮食记录，记录卡路里能帮你看清真实的摄入水平。');
+  if(s.exDays>=4) out.push(`🔥 本周运动 <b>${s.exDays}</b> 天、共 ${s.exMin} 分钟、消耗 ${s.exCal} kcal，运动习惯已经成型，注意留 1-2 天恢复日。`);
+  else if(s.exDays>0) out.push(`🏃 本周仅运动 <b>${s.exDays}</b> 天。哪怕每天散步 20 分钟，连续性也比强度更重要——从明天开始补上吧。`);
+  else out.push('🛋 本周还没有运动记录，选一项喜欢的运动先打卡一次试试？');
+  const bal = s.income - s.expense;
+  if(s.expense || s.income){
+    const rate = s.income ? Math.round(s.expense/s.income*100) : null;
+    out.push(bal>=0 ? `💰 本月已录收入 ${fmtY(s.income)}、支出 ${fmtY(s.expense)}，结余 <b>${fmtY(bal)}</b>${rate!==null?`，支出占收入 ${rate}%`:''}。`+ (rate!==null && rate>80 ? '支出偏高，看看哪个分类可以压缩。' : '财务状况健康。')
+                     : `⚠️ 本月支出 ${fmtY(s.expense)} 已超过收入 ${fmtY(s.income)}，结余 <b>${fmtY(bal)}</b>，建议复盘非必要开支。`);
+  } else out.push('💰 本月暂无收支记录，记一笔才知道钱花哪儿了。');
+  if(s.moodDays) out.push(s.moodAvg>=3.5 ? `🌈 本周平均心情指数 <b>${s.moodAvg.toFixed(1)}</b>，状态不错，把让你开心的事写进日记沉淀下来。`
+                                          : `🌧 本周平均心情指数 <b>${s.moodAvg.toFixed(1)}</b> 偏低，多安排运动和户外活动，它们是天然的情绪调节剂。`);
+  else out.push('🌈 本周还没有心情记录，每天选一个 emoji，一个月后回看会很有意思。');
+  if(s.engDays) out.push(`🔤 本周学习英语 <b>${s.engDays}</b> 天、共 ${s.engWords} 个单词，坚持碎片化复习效果最好。`);
+  else out.push('🔤 本周还没有英语学习记录，词库里攒的单词正等着你复习。');
+  // 综合建议
+  const score = (s.todoTotal?1:0)+(s.avgCal?1:0)+(s.exDays?1:0)+((s.income||s.expense)?1:0)+(s.moodDays?1:0)+(s.engDays?1:0);
+  out.push(score>=5 ? '🏆 你已经在追踪 '+score+' 个维度的生活数据，这种自我觉察能力非常难得。数据贵在坚持，下周年会有更清晰的趋势。'
+                    : '💡 目前正在追踪 '+score+' 个维度。生活仪表盘记录得越全，洞察越准——试着把还没用的模块也用起来吧。');
+  return out;
+}
+function openWeekModal(){
+  const s = weekSummary();
+  const fmtRange = a => `${Number(a.slice(0,4))}年${Number(a.slice(5,7))}月${Number(a.slice(8,10))}日`;
+  document.getElementById('weekRange').textContent = `统计周期：${fmtRange(s.wd[0])} — ${fmtRange(s.wd[6])}`;
+  const todoPct = s.todoTotal ? Math.round(s.todoDone/s.todoTotal*100)+'%' : '—';
+  document.getElementById('weekGrid').innerHTML = `
+    <div class="wk-cell"><div class="k">✅ 待办完成</div><div class="v">${s.todoDone}/${s.todoTotal} <small style="font-size:12px;color:var(--text2)">${todoPct}</small></div></div>
+    <div class="wk-cell"><div class="k">🥗 日均摄入</div><div class="v">${s.avgCal||0} <small style="font-size:12px;color:var(--text2)">kcal（超目标 ${s.overDays} 天）</small></div></div>
+    <div class="wk-cell"><div class="k">🏃 运动打卡</div><div class="v">${s.exDays}<small style="font-size:12px;color:var(--text2)">天 / ${s.exMin} 分钟 / ${s.exCal} kcal</small></div></div>
+    <div class="wk-cell"><div class="k">💰 本月结余</div><div class="v" style="color:${s.income-s.expense>=0?'var(--green)':'var(--pink)'}">${fmtY(s.income-s.expense)}</div></div>
+    <div class="wk-cell"><div class="k">🌈 平均心情</div><div class="v">${s.moodDays?s.moodAvg.toFixed(1):'—'} <small style="font-size:12px;color:var(--text2)">/ 5（记录 ${s.moodDays} 天）</small></div></div>
+    <div class="wk-cell"><div class="k">🔤 英语学习</div><div class="v">${s.engWords} <small style="font-size:12px;color:var(--text2)">个 / ${s.engDays} 天</small></div></div>`;
+  document.getElementById('insights').innerHTML = buildInsights(s).map(t=>`<div class="insight"><span class="ic">💡</span><div>${t}</div></div>`).join('');
+  document.getElementById('weekModal').classList.add('open');
+}
+function closeWeekModal(){ document.getElementById('weekModal').classList.remove('open'); }
+
+/* ============================================================
+   导出 / 导入
+============================================================ */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `个人工作台备份_${today()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('备份文件已导出 ⬆');
+}
+function importData(input){
+  const f = input.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(typeof data !== 'object' || data === null) throw 0;
+      state = Object.assign(structuredClone(DEFAULT_STATE), data);
+      ensureTheme(); save(); applyTheme(); switchView(currentView);
+      toast('数据导入成功，欢迎回来 ✨');
+    }catch(err){ toast('导入失败：文件格式不正确'); }
+    input.value = '';
+  };
+  r.readAsText(f);
+}
+
+/* ============================================================
+   启动
+============================================================ */
+(function init(){
+  /* 移除 EdgeOne Pages 平台注入的 unified.js（演示水印/FAB），
+     它在 defer 阶段执行，此时移除标签可阻止其运行（CSS display:none 为第一道保险） */
+  document.querySelectorAll('script[src*="unified.js"]').forEach(s=>s.remove());
+  const d = new Date();
+  const wd = ['日','一','二','三','四','五','六'];
+  document.getElementById('todayLabel').innerHTML = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日<br>星期${wd[d.getDay()]}`;
+  ensureTheme();
+  buildNav();
+  applyTheme();
+  applyThemeModeBtns();
+  switchView('todos');
+  save();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    navigator.serviceWorker.register('sw.js').then(r=>console.log('[PWA] sw registered')).catch(e=>console.warn('[PWA] sw failed',e));
+  }
+  /* ---------- 禁用误触缩放（像原生 App 一样固定页面） ---------- */
+  // iOS Safari 双指捏合缩放
+  ['gesturestart','gesturechange','gestureend'].forEach(ev=>
+    document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
+  // 双指 touchmove 兜底（仅当多指时阻止，不影响单指滚动）
+  document.addEventListener('touchmove', e=>{
+    if(e.touches.length > 1) e.preventDefault();
+  }, {passive:false});
+})();
+</script>
+</body>
+</html>

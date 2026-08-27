@@ -1,0 +1,17 @@
+{
+  "name": "个人工作台",
+  "short_name": "工作台",
+  "description": "一站式生活管理看板：计划、饮食、运动、记账、读书、心情、英语与主题定制",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f2f2f7",
+  "theme_color": "#30b94d",
+  "categories": ["lifestyle", "productivity", "utilities"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
